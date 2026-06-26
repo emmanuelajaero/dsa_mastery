@@ -14,10 +14,27 @@ Re-run this script any time you edit the .md files to refresh the HTML.
 """
 import base64
 import pathlib
+import re as _re
+
+import build_game  # shares the curated pattern REGISTRY (id <-> section name)
 
 HERE = pathlib.Path(__file__).resolve().parent
 SITE = HERE / "site"
 ASSETS = SITE / "assets"
+
+
+def _gkey(text):
+    """Normalize a heading/section title to match the game's pattern map."""
+    return _re.sub(r'[^a-z0-9]', '', text.lower())
+
+
+# map normalized section title -> game pattern id, so site pages can deep-link
+GAME_INDEX = {}
+for _e in build_game.REGISTRY:
+    GAME_INDEX[_gkey(_e["section"])] = _e["id"]
+    GAME_INDEX[_gkey(_e["name"])] = _e["id"]
+import json as _json
+GAME_INDEX_JSON = _json.dumps(GAME_INDEX, ensure_ascii=False)
 
 # (source markdown, output html, sidebar title)
 PAGES = [
@@ -33,7 +50,7 @@ PAGES = [
 NAV_JSON = ",".join(
     '{{"href":"{html}","title":"{title}"}}'.format(html=html, title=title)
     for _, html, title in PAGES
-)
+) + ',{"href":"game/index.html","title":"\\u25B6 Play: Pattern Forge"}'
 
 PAGE_TEMPLATE = """<!DOCTYPE html>
 <html lang="en" data-theme="dark">
@@ -50,6 +67,7 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
   <button id="menuBtn" class="icon-btn" aria-label="Toggle navigation">&#9776;</button>
   <a class="brand" href="index.html"><span class="brand-mark">{ }</span> DSA Mastery</a>
   <div class="spacer"></div>
+  <a id="gameBtn" class="icon-btn game-btn" href="game/index.html" aria-label="Play Pattern Forge" title="Pattern Forge — full game mode">&#127918;</a>
   <button id="themeBtn" class="icon-btn" aria-label="Toggle theme" title="Toggle light / dark">&#9789;</button>
   <button id="searchBtn" class="icon-btn search-toggle" aria-label="Search" title="Search patterns">&#128269;</button>
 </header>
@@ -87,6 +105,7 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
 <script type="text/markdown" id="md-content">__B64__</script>
 <script>window.__NAV__ = [__NAVDATA__];</script>
 <script>window.__SEARCH_INDEX__ = [__SEARCHINDEX__];</script>
+<script>window.__GAME_INDEX__ = __GAMEINDEX__;</script>
 <script src="vendor/marked.min.js"></script>
 <script src="vendor/highlight.min.js"></script>
 <script src="assets/app.js"></script>
@@ -308,6 +327,18 @@ code,pre,kbd{font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monos
 /* Watch-out callout blocks */
 .markdown-body h3 .watchout-icon{margin-right:4px}
 
+/* ---- "Play this" deep-link buttons injected next to gamified concepts ---- */
+.game-btn{display:inline-flex; align-items:center; justify-content:center; text-decoration:none;
+  background:linear-gradient(135deg,#a371f7,#f778ba); color:#fff; border-color:transparent}
+.game-btn:hover{filter:brightness(1.08); border-color:transparent}
+.gp-bar{margin:8px 0 16px}
+.gp-bar-sm{margin:-6px 0 16px}
+.play-btn{display:inline-flex; align-items:center; gap:6px; text-decoration:none; font-weight:600; font-size:13px;
+  color:#fff !important; background:linear-gradient(135deg,#a371f7,#f778ba); border:0; border-radius:999px;
+  padding:7px 14px; cursor:pointer; box-shadow:0 2px 10px var(--shadow); line-height:1.1}
+.play-btn:hover{filter:brightness(1.08); text-decoration:none}
+.play-btn-sm{font-size:12px; padding:5px 11px; background:linear-gradient(135deg,#1f6feb,#a371f7)}
+
 /* Progress tracker tables - ensure horizontal scroll on mobile */
 .markdown-body table{-webkit-overflow-scrolling:touch; overscroll-behavior-x:contain}
 
@@ -385,6 +416,48 @@ APP_JS = r"""(function(){
     });
     pre.appendChild(btn);
   });
+
+  // ---- inject "Play this" deep-links next to gamified concepts/templates/examples ----
+  (function(){
+    var GIDX = window.__GAME_INDEX__ || {};
+    function gnorm(s){ return s.toLowerCase().replace(/[^a-z0-9]/g,''); }
+    function stripLabel(s){ return s.replace(/^\s*([0-9]+|[a-zA-Z])\.\s*/, ''); }
+    function gameHref(id, mode){ return 'game/index.html?pattern=' + encodeURIComponent(id) + (mode ? ('&mode=' + mode) : ''); }
+    function playLink(id, mode, label, small){
+      var a = document.createElement('a');
+      a.className = 'play-btn' + (small ? ' play-btn-sm' : '');
+      a.href = gameHref(id, mode);
+      a.innerHTML = label;
+      return a;
+    }
+    // 1) concept buttons on each pattern heading
+    article.querySelectorAll('h2').forEach(function(h){
+      var txt = h.textContent.replace(/#$/, '');
+      var id = GIDX[gnorm(stripLabel(txt))];
+      if(!id){ return; }
+      h.setAttribute('data-pattern', id);
+      var bar = document.createElement('div'); bar.className = 'gp-bar';
+      bar.appendChild(playLink(id, '', '&#127918; Play this pattern', false));
+      if(h.nextSibling){ h.parentNode.insertBefore(bar, h.nextSibling); } else { h.parentNode.appendChild(bar); }
+    });
+    // 2) template/example buttons on each Python code block within a pattern section
+    article.querySelectorAll('pre > code.language-python').forEach(function(code){
+      var pre = code.parentElement;
+      var p = pre.previousElementSibling, sub = '', secId = null;
+      while(p){
+        if(p.tagName === 'H3' && !sub){ sub = p.textContent.replace(/#$/, ''); }
+        if(p.tagName === 'H2'){ secId = p.getAttribute('data-pattern'); break; }
+        p = p.previousElementSibling;
+      }
+      if(!secId){ return; }
+      var isExample = /worked example/i.test(sub);
+      var mode = isExample ? 'cloze' : 'forge';
+      var label = isExample ? '&#127918; Play this example' : '&#127918; Play this template';
+      var bar = document.createElement('div'); bar.className = 'gp-bar gp-bar-sm';
+      bar.appendChild(playLink(secId, mode, label, true));
+      if(pre.nextSibling){ pre.parentNode.insertBefore(bar, pre.nextSibling); } else { pre.parentNode.appendChild(bar); }
+    });
+  })();
 
   // ---- sidebar nav ----
   var navList = document.getElementById('navList');
@@ -599,6 +672,7 @@ def main():
                 .replace("__TITLE__", title)
                 .replace("__NAVDATA__", NAV_JSON)
                 .replace("__SEARCHINDEX__", search_json)
+                .replace("__GAMEINDEX__", GAME_INDEX_JSON)
                 .replace("__B64__", b64))
         (SITE / out).write_text(html, encoding="utf-8")
         print("wrote", (SITE / out).relative_to(HERE))

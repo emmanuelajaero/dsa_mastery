@@ -64,6 +64,48 @@
     pre.appendChild(btn);
   });
 
+  // ---- inject "Play this" deep-links next to gamified concepts/templates/examples ----
+  (function(){
+    var GIDX = window.__GAME_INDEX__ || {};
+    function gnorm(s){ return s.toLowerCase().replace(/[^a-z0-9]/g,''); }
+    function stripLabel(s){ return s.replace(/^\s*([0-9]+|[a-zA-Z])\.\s*/, ''); }
+    function gameHref(id, mode){ return 'game/index.html?pattern=' + encodeURIComponent(id) + (mode ? ('&mode=' + mode) : ''); }
+    function playLink(id, mode, label, small){
+      var a = document.createElement('a');
+      a.className = 'play-btn' + (small ? ' play-btn-sm' : '');
+      a.href = gameHref(id, mode);
+      a.innerHTML = label;
+      return a;
+    }
+    // 1) concept buttons on each pattern heading
+    article.querySelectorAll('h2').forEach(function(h){
+      var txt = h.textContent.replace(/#$/, '');
+      var id = GIDX[gnorm(stripLabel(txt))];
+      if(!id){ return; }
+      h.setAttribute('data-pattern', id);
+      var bar = document.createElement('div'); bar.className = 'gp-bar';
+      bar.appendChild(playLink(id, '', '&#127918; Play this pattern', false));
+      if(h.nextSibling){ h.parentNode.insertBefore(bar, h.nextSibling); } else { h.parentNode.appendChild(bar); }
+    });
+    // 2) template/example buttons on each Python code block within a pattern section
+    article.querySelectorAll('pre > code.language-python').forEach(function(code){
+      var pre = code.parentElement;
+      var p = pre.previousElementSibling, sub = '', secId = null;
+      while(p){
+        if(p.tagName === 'H3' && !sub){ sub = p.textContent.replace(/#$/, ''); }
+        if(p.tagName === 'H2'){ secId = p.getAttribute('data-pattern'); break; }
+        p = p.previousElementSibling;
+      }
+      if(!secId){ return; }
+      var isExample = /worked example/i.test(sub);
+      var mode = isExample ? 'cloze' : 'forge';
+      var label = isExample ? '&#127918; Play this example' : '&#127918; Play this template';
+      var bar = document.createElement('div'); bar.className = 'gp-bar gp-bar-sm';
+      bar.appendChild(playLink(secId, mode, label, true));
+      if(pre.nextSibling){ pre.parentNode.insertBefore(bar, pre.nextSibling); } else { pre.parentNode.appendChild(bar); }
+    });
+  })();
+
   // ---- sidebar nav ----
   var navList = document.getElementById('navList');
   var here = location.pathname.split('/').pop() || 'index.html';

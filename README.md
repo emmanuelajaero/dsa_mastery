@@ -16,7 +16,38 @@ Open [`site/index.html`](./site/index.html) in your browser for a styled, naviga
 version: syntax-highlighted Python, a chapter sidebar, an on-page table of contents,
 copy-code buttons, and a light/dark toggle. It runs **fully offline**.
 
-> Edited the Markdown? Regenerate the HTML with `python3 build_site.py`.
+> Edited the Markdown? Regenerate everything (site **and** game) with one command:
+> `python3 build.py`.
+
+---
+
+## ▶ Play it: **Pattern Forge** (memorize by doing)
+
+Open [`site/game/index.html`](./site/game/index.html) — or click the 🎮 button / the
+**Play: Pattern Forge** tab inside the site — to drill the templates and examples as a
+**mobile-friendly puzzle game**: reorder code, fill the gaps, hunt poisoned lines, and
+survive a timed gauntlet. It's deliberately *tricky*: every wrong answer is **poisoned**
+with the exact off-by-one / operator / direction bugs the guide warns about, so you learn
+to spot them. Streak combos, XP belts, mastery stars, sound and haptics included. Runs
+**fully offline**.
+
+| Mode | What it trains |
+|------|----------------|
+| 🛠️ **Code Forge** | Rebuild a template line-by-line — and leave out the decoy lines. |
+| 🧩 **Fill the Gap** | Drop the right token (`<=` vs `<`, `min` vs `max`…) into each blank. |
+| 🐞 **Bug Hunt** | One line was poisoned. Find it. |
+| 🕵️ **Name That Pattern** | Map a problem's clue to the right pattern. |
+| 📈 **Big-O Climb** | Recall time & space complexity. |
+| 🧠 **Mnemonic Match** | Match each pattern to its memory hook. |
+| 💀 **The Gauntlet** | All modes, 3 lives, a ticking clock — how far can you get? |
+
+There are **two ways in**: open the game tab for the full experience, or hit a
+**🎮 Play this template / example / pattern** button right next to any concept in the
+guide to jump straight into a focused drill for *just that pattern*.
+
+> Edited the Markdown? Run `python3 build.py` to regenerate the site and game together
+> (both pull the code & mnemonics straight from these `.md` files, so they never drift
+> from the guide). You can still run `build_game.py` or `build_site.py` individually.
 
 ---
 

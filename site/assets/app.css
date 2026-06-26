@@ -212,6 +212,18 @@ code,pre,kbd{font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monos
 /* Watch-out callout blocks */
 .markdown-body h3 .watchout-icon{margin-right:4px}
 
+/* ---- "Play this" deep-link buttons injected next to gamified concepts ---- */
+.game-btn{display:inline-flex; align-items:center; justify-content:center; text-decoration:none;
+  background:linear-gradient(135deg,#a371f7,#f778ba); color:#fff; border-color:transparent}
+.game-btn:hover{filter:brightness(1.08); border-color:transparent}
+.gp-bar{margin:8px 0 16px}
+.gp-bar-sm{margin:-6px 0 16px}
+.play-btn{display:inline-flex; align-items:center; gap:6px; text-decoration:none; font-weight:600; font-size:13px;
+  color:#fff !important; background:linear-gradient(135deg,#a371f7,#f778ba); border:0; border-radius:999px;
+  padding:7px 14px; cursor:pointer; box-shadow:0 2px 10px var(--shadow); line-height:1.1}
+.play-btn:hover{filter:brightness(1.08); text-decoration:none}
+.play-btn-sm{font-size:12px; padding:5px 11px; background:linear-gradient(135deg,#1f6feb,#a371f7)}
+
 /* Progress tracker tables - ensure horizontal scroll on mobile */
 .markdown-body table{-webkit-overflow-scrolling:touch; overscroll-behavior-x:contain}
 
