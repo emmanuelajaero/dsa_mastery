@@ -19,6 +19,8 @@ mnemonic, and the complexity index, then work through the files in order:
 2. [`01-core-patterns.md`](./01-core-patterns.md) — the 15 core LeetCode patterns (Python).
 3. [`02-dynamic-programming.md`](./02-dynamic-programming.md) — the 20 dynamic programming patterns (Python).
 4. [`03-flashcards.md`](./03-flashcards.md) — rapid recall + spaced-repetition schedule.
+5. [`04-advanced-patterns.md`](./04-advanced-patterns.md) — Dijkstra & Union-Find (bonus graph patterns).
+6. [`05-progress-tracker.md`](./05-progress-tracker.md) — checklist tracker for study accountability.
 
 Based on AlgoMaster's
 [15 LeetCode Patterns](https://blog.algomaster.io/p/15-leetcode-patterns) and

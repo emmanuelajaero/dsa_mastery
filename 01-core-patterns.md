@@ -80,6 +80,12 @@ def subarray_sum(nums, k):
 ### Complexity
 - Build: **`O(n)` time**, query: **`O(1)`**. Hash-map version: **`O(n)` time, `O(n)` space.**
 
+### ⚠️ Watch out
+- **Empty array:** handle `len(nums) == 0` before building the prefix.
+- **Integer overflow:** large sums can overflow in C++/Java — Python handles big ints natively, but mention it in interviews.
+- **Off-by-one on range boundaries:** the `prefix[0] = 0` sentinel avoids `i-1` going negative, but forgetting it causes wrong answers.
+- **Subarray sum variant needs a hash map**, not raw prefix subtraction — don't confuse the two templates.
+
 ### Practice
 - Range Sum Query – Immutable (303), Contiguous Array (525), Subarray Sum Equals K (560).
 
@@ -159,6 +165,12 @@ def three_sum(nums):
 - Pair scan: **`O(n)`** time, **`O(1)`** space (plus `O(n log n)` if you must sort).
 - 3Sum: **`O(n^2)`** time.
 
+### ⚠️ Watch out
+- **Input must be sorted** (or you sort first) — two pointers on unsorted data gives wrong answers.
+- **All-same values:** e.g. `[2,2,2,2]` with target 4 — make sure you handle duplicate pairs correctly.
+- **Single element or empty array:** `left < right` loop guard already handles this, but double-check.
+- **3Sum dedup:** skipping `nums[i] == nums[i-1]` is essential — forgetting it produces duplicate triplets.
+
 ### Practice
 - Two Sum II (167), 3Sum (15), Container With Most Water (11).
 
@@ -217,6 +229,12 @@ def longest_unique_substring(s):         # LeetCode 3
 
 ### Complexity
 - **`O(n)`** time (each element enters and leaves once), **`O(1)`–`O(k)`** space.
+
+### ⚠️ Watch out
+- **Window size > array length:** for fixed-size windows, check `k <= len(nums)` first.
+- **Negative numbers:** sliding window for "subarray sum ≥ target" only works with non-negative values — with negatives, use prefix sum + binary search.
+- **Empty string:** always guard `if not s: return 0`.
+- **Variable window:** make sure `left` never passes `right` — use `while left <= right and <invalid>` to shrink.
 
 ### Practice
 - Maximum Average Subarray I (643), Longest Substring Without Repeating (3), Minimum Window Substring (76).
@@ -287,6 +305,12 @@ def find_duplicate(nums):
 ### Complexity
 - **`O(n)`** time, **`O(1)`** space.
 
+### ⚠️ Watch out
+- **Empty list / single node:** `while fast and fast.next` handles this — if you forget `fast.next`, you'll crash on single nodes.
+- **No cycle exists:** fast reaches `None` and the loop exits — make sure you return `False`, not crash.
+- **Finding the middle:** for even-length lists, `slow` ends at the *second* middle node — know which one the problem expects.
+- **Phase 2 (cycle entry):** you must reset only *one* pointer to head, not both — a common mistake.
+
 ### Practice
 - Linked List Cycle (141), Happy Number (202), Find the Duplicate Number (287).
 
@@ -349,6 +373,12 @@ def reverse_between(head, m, n):
 
 ### Complexity
 - **`O(n)`** time, **`O(1)`** space.
+
+### ⚠️ Watch out
+- **Single node:** `curr.next` is `None`, so the loop body never executes — returns correctly, but verify.
+- **Sublist reversal (m=1):** without a dummy head node, `prev` is `None` and you special-case the head — use a dummy to avoid this.
+- **k-group reversal:** if remaining nodes < k, don't reverse — count first.
+- **Losing the tail:** after reversal, the old head is now the tail — make sure it points to the right next segment.
 
 ### Practice
 - Reverse Linked List (206), Reverse Linked List II (92), Swap Nodes in Pairs (24).
@@ -416,6 +446,12 @@ def daily_temperatures(temps):
 ### Complexity
 - **`O(n)`** time (each index pushed/popped once), **`O(n)`** space.
 
+### ⚠️ Watch out
+- **All ascending or all descending:** the stack might never pop (ascending) or pop everything immediately (descending) — both are valid but test them.
+- **Single element:** result is `[-1]` — make sure your loop handles it.
+- **Circular array (Next Greater Element II):** loop `2*n` and use `i % n` — don't forget the wraparound.
+- **Indices vs values:** store *indices* on the stack, not values — you'll need the index to fill the result array.
+
 ### Practice
 - Next Greater Element I (496), Daily Temperatures (739), Largest Rectangle in Histogram (84).
 
@@ -480,6 +516,12 @@ def top_k_frequent(nums, k):
 ### Complexity
 - **`O(n log k)`** time, **`O(k)`** space. (Full sort would be `O(n log n)`.)
 
+### ⚠️ Watch out
+- **k = 0:** return empty — don't push anything.
+- **k ≥ n:** the answer is the whole array (or the smallest element for kth-largest) — guard for this.
+- **All elements equal:** the heap works correctly but verify your answer is right (kth largest of `[5,5,5]` is `5`).
+- **Max-heap in Python:** Python only has min-heap — push negated values `(-val, val)` for max-heap behavior.
+
 ### Practice
 - Kth Largest Element (215), Top K Frequent Elements (347), Find K Pairs with Smallest Sums (373).
 
@@ -543,6 +585,12 @@ def erase_overlap_intervals(intervals):
 
 ### Complexity
 - **`O(n log n)`** time (the sort dominates), **`O(n)`** space.
+
+### ⚠️ Watch out
+- **Single interval:** result is just that interval — make sure your loop still appends it.
+- **Touching endpoints:** `[1,2]` and `[2,3]` — are these overlapping? Usually yes (`start <= merged[-1][1]`), but read the problem carefully.
+- **Fully nested intervals:** `[1,10]` and `[2,3]` — the merge should keep `[1,10]`, not `[1,3]`. Use `max(end)` not just `end`.
+- **Sorting by start vs end:** merge uses start-sort, but "minimum removals" uses end-sort (greedy earliest finish).
 
 ### Practice
 - Merge Intervals (56), Insert Interval (57), Non-Overlapping Intervals (435).
@@ -613,6 +661,13 @@ def search_rotated(nums, target):
 
 ### Complexity
 - **`O(log n)`** time, **`O(1)`** space.
+
+### ⚠️ Watch out
+- **Single element array:** `lo == hi == mid` — make sure you return it if it matches, not loop forever.
+- **Target not present:** return `-1` or the insertion point — know which the problem asks for.
+- **`lo + hi` overflow:** in Python this is safe, but in C++/Java use `lo + (hi - lo) // 2`. Mention this in interviews.
+- **Rotated array:** always check which half is sorted *first* (`nums[lo] <= nums[mid]`), then decide.
+- **Duplicates in rotated:** `[1,1,1,0,1]` breaks the sorted-half check — worst case degrades to `O(n)`.
 
 ### Practice
 - Search in Rotated Sorted Array (33), Find Minimum in Rotated Sorted Array (153), Search a 2D Matrix II (240).
@@ -687,6 +742,12 @@ def kth_smallest(root, k):
 
 ### Complexity
 - **`O(n)`** time, **`O(h)`** space (`h` = height; `O(n)` worst, `O(log n)` balanced).
+
+### ⚠️ Watch out
+- **Empty tree (`root is None`):** return `[]` or `0` immediately — don't recurse into `None`.
+- **Single node:** the traversal returns `[root.val]` — trivial but verify.
+- **Skewed tree (all left or all right):** recursion depth = `n`, risking stack overflow — consider iterative for deep trees.
+- **Confusing orders:** PRE = root *first*, IN = root *middle*, POST = root *last*. A BST inorder is *always sorted*.
 
 ### Practice
 - Binary Tree Paths (257, pre), Kth Smallest in a BST (230, in), Binary Tree Maximum Path Sum (124, post).
@@ -768,6 +829,12 @@ def find_order(num_courses, prerequisites):
 
 ### Complexity
 - **`O(V + E)`** time, **`O(V)`** space (visited + recursion stack).
+
+### ⚠️ Watch out
+- **Disconnected graph:** a single `dfs(start)` won't visit all nodes — loop over all nodes and start DFS from unvisited ones.
+- **Self-loops:** `if nxt not in visited` handles them, but forgetting `visited.add(node)` *before* exploring neighbors causes infinite recursion.
+- **Recursion depth:** Python's default limit is ~1000 — for large graphs, use `sys.setrecursionlimit()` or switch to iterative DFS with a stack.
+- **Topological sort cycle detection:** use a 3-state coloring (unseen/visiting/done) — a back-edge to a "visiting" node = cycle.
 
 ### Practice
 - Clone Graph (133), Path Sum II (113), Course Schedule II (210).
@@ -857,6 +924,12 @@ def oranges_rotting(grid):
 ### Complexity
 - **`O(V + E)`** (grid: `O(m·n)`) time, **`O(V)`** space for the queue.
 
+### ⚠️ Watch out
+- **Source = destination:** return `0` (zero steps), not `-1` — a common off-by-one.
+- **Disconnected components:** if the target is unreachable, BFS exhausts the queue — return `-1`.
+- **Single-node graph:** BFS returns immediately with `[root]` — verify.
+- **Forgetting `visited` at enqueue time:** if you mark visited only at *dequeue*, you'll enqueue duplicates and waste memory (or TLE).
+
 ### Practice
 - Binary Tree Level Order (102), Rotting Oranges (994), Word Ladder (127).
 
@@ -927,6 +1000,12 @@ def num_islands(grid):
 
 ### Complexity
 - **`O(m·n)`** time, **`O(m·n)`** space (recursion / visited worst case).
+
+### ⚠️ Watch out
+- **Empty grid (0 rows or 0 cols):** guard with `if not grid or not grid[0]: return 0`.
+- **Single cell:** the answer might be 1 island — make sure you still count it.
+- **Modifying the grid as visited:** `grid[r][c] = "0"` works but mutates the input — if the problem says "don't modify", use a separate `visited` set.
+- **Stack overflow on large grids:** `200 × 200` = 40,000 recursive calls — consider iterative BFS/DFS for safety.
 
 ### Practice
 - Flood Fill (733), Number of Islands (200), Surrounded Regions (130).
@@ -1000,6 +1079,12 @@ def subsets(nums):
 - Permutations **`O(n·n!)`**, Subsets **`O(n·2^n)`**, general **`O(branch^depth)`**;
   space **`O(depth)`** for recursion (plus output).
 
+### ⚠️ Watch out
+- **Empty input:** `backtrack([])` should return `[[]]` (one empty subset) or `[]` (no permutations) — know the difference.
+- **Duplicates producing duplicate results:** sort the input and skip `if i > start and nums[i] == nums[i-1]` in subsets/combinations.
+- **Forgetting to copy `path`:** `res.append(path[:])` — if you append `path` directly, all entries share the same mutable list.
+- **Pruning:** without early termination (e.g., sum exceeds target), backtracking can be extremely slow — always prune where possible.
+
 ### Practice
 - Permutations (46), Subsets (78), N-Queens (51).
 
@@ -1043,5 +1128,11 @@ def fib(n):
 **The two questions that unlock every DP problem:**
 1. **What is the state?** (the minimal info that defines a subproblem, e.g. `dp[i]`, `dp[i][j]`)
 2. **What is the transition/recurrence?** (how a state is built from smaller states)
+
+### ⚠️ Watch out
+- **Forgetting base cases:** every DP solution needs at least one base case — `dp[0]`, `dp[0][0]`, etc.
+- **Off-by-one in state definition:** is `dp[i]` "first i items" or "item at index i"? Be precise.
+- **Memoization dict vs array:** `@lru_cache` is convenient but slower than a hand-rolled array for large states — switch to bottom-up if you hit TLE.
+- **Not recognizing overlapping subproblems:** if the recursion tree has no repeated nodes, DP doesn't help — it's just recursion.
 
 Continue to the 20 DP patterns → [`02-dynamic-programming.md`](./02-dynamic-programming.md).

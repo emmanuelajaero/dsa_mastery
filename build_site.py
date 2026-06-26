@@ -26,6 +26,8 @@ PAGES = [
     ("01-core-patterns.md",          "01-core-patterns.html",         "1 · 15 Core Patterns"),
     ("02-dynamic-programming.md",    "02-dynamic-programming.html",   "2 · 20 DP Patterns"),
     ("03-flashcards.md",             "03-flashcards.html",            "3 · Flashcards & Review"),
+    ("04-advanced-patterns.md",      "04-advanced-patterns.html",     "4 · Advanced Patterns"),
+    ("05-progress-tracker.md",       "05-progress-tracker.html",      "5 · Progress Tracker"),
 ]
 
 NAV_JSON = ",".join(
@@ -49,7 +51,16 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
   <a class="brand" href="index.html"><span class="brand-mark">{ }</span> DSA Mastery</a>
   <div class="spacer"></div>
   <button id="themeBtn" class="icon-btn" aria-label="Toggle theme" title="Toggle light / dark">&#9789;</button>
+  <button id="searchBtn" class="icon-btn search-toggle" aria-label="Search" title="Search patterns">&#128269;</button>
 </header>
+
+<div id="searchOverlay" class="search-overlay">
+  <div class="search-bar">
+    <input id="searchInput" type="search" placeholder="Search patterns, topics, keywords…" autocomplete="off">
+    <button id="searchClose" class="icon-btn" aria-label="Close search">&#10005;</button>
+  </div>
+  <ul id="searchResults" class="search-results"></ul>
+</div>
 
 <div class="layout">
   <nav id="sidebar" class="sidebar">
@@ -75,6 +86,7 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
 
 <script type="text/markdown" id="md-content">__B64__</script>
 <script>window.__NAV__ = [__NAVDATA__];</script>
+<script>window.__SEARCH_INDEX__ = [__SEARCHINDEX__];</script>
 <script src="vendor/marked.min.js"></script>
 <script src="vendor/highlight.min.js"></script>
 <script src="assets/app.js"></script>
@@ -262,6 +274,50 @@ code,pre,kbd{font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monos
 .scrim{position:fixed; inset:56px 0 0 0; background:rgba(0,0,0,.45); z-index:44; display:none}
 .scrim.show{display:block}
 @media (min-width:821px){.scrim{display:none!important}}
+
+/* Search overlay */
+.search-toggle{font-size:16px}
+.search-overlay{
+  display:none; position:fixed; top:56px; left:0; right:0; z-index:55;
+  background:var(--panel); border-bottom:1px solid var(--border);
+  box-shadow:0 8px 32px var(--shadow); flex-direction:column; max-height:70vh;
+}
+.search-overlay.open{display:flex}
+.search-bar{
+  display:flex; align-items:center; gap:8px; padding:12px 16px;
+  border-bottom:1px solid var(--border);
+}
+.search-bar input{
+  flex:1; padding:10px 14px; border-radius:8px; border:1px solid var(--border);
+  background:var(--bg-soft); color:var(--text); font-size:15px; outline:none;
+}
+.search-bar input:focus{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft)}
+.search-bar input::placeholder{color:var(--text-dim)}
+.search-results{
+  list-style:none; margin:0; padding:0; overflow-y:auto; max-height:calc(70vh - 60px);
+}
+.search-results li{margin:0}
+.search-results a{
+  display:block; padding:10px 20px; color:var(--text); text-decoration:none;
+  border-bottom:1px solid var(--border); font-size:14px;
+}
+.search-results a:hover{background:var(--bg-soft)}
+.search-results .sr-page{font-size:11px; color:var(--text-dim); margin-left:8px}
+.search-results .sr-empty{padding:20px; color:var(--text-dim); text-align:center; font-size:14px}
+
+/* Watch-out callout blocks */
+.markdown-body h3 .watchout-icon{margin-right:4px}
+
+/* Progress tracker tables - ensure horizontal scroll on mobile */
+.markdown-body table{-webkit-overflow-scrolling:touch; overscroll-behavior-x:contain}
+
+@media (max-width:820px){
+  .search-bar input{font-size:16px}  /* prevent iOS zoom on focus */
+}
+@media (max-width:480px){
+  .search-bar{padding:10px 12px}
+  .search-results a{padding:10px 14px; font-size:13px}
+}
 """
 
 APP_JS = r"""(function(){
@@ -390,22 +446,159 @@ APP_JS = r"""(function(){
   });
   scrim.addEventListener('click', closeNav);
   navList.addEventListener('click', closeNav);
+
+  // ---- search ----
+  var searchBtn = document.getElementById('searchBtn');
+  var searchOverlay = document.getElementById('searchOverlay');
+  var searchInput = document.getElementById('searchInput');
+  var searchClose = document.getElementById('searchClose');
+  var searchResults = document.getElementById('searchResults');
+
+  // Build local index from rendered headings + first paragraph
+  var localIndex = [];
+  headings.forEach(function(h){
+    if(h.tagName === 'H1' || h.tagName === 'H2' || h.tagName === 'H3'){
+      var text = h.textContent.replace(/#$/,'').trim();
+      // grab following paragraph text for richer search
+      var next = h.nextElementSibling;
+      var snippet = '';
+      if(next && (next.tagName === 'P' || next.tagName === 'BLOCKQUOTE')){
+        snippet = next.textContent.substring(0, 120);
+      }
+      localIndex.push({text:text, snippet:snippet, id:h.id, page:here, pageTitle:''});
+    }
+  });
+
+  // Merge with cross-page index
+  var fullIndex = (window.__SEARCH_INDEX__ || []).filter(function(e){ return e.page !== here; });
+  fullIndex = localIndex.concat(fullIndex);
+
+  function openSearch(){
+    searchOverlay.classList.add('open');
+    setTimeout(function(){ searchInput.focus(); }, 50);
+  }
+  function closeSearch(){
+    searchOverlay.classList.remove('open');
+    searchInput.value = '';
+    searchResults.innerHTML = '';
+  }
+  searchBtn.addEventListener('click', openSearch);
+  searchClose.addEventListener('click', closeSearch);
+  // Close on Escape
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape' && searchOverlay.classList.contains('open')){ closeSearch(); }
+    // Ctrl/Cmd + K to open search
+    if((e.ctrlKey || e.metaKey) && e.key === 'k'){ e.preventDefault(); openSearch(); }
+  });
+
+  var searchTimer;
+  searchInput.addEventListener('input', function(){
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(doSearch, 150);
+  });
+
+  function doSearch(){
+    var q = searchInput.value.trim().toLowerCase();
+    searchResults.innerHTML = '';
+    if(!q){ return; }
+    var matches = fullIndex.filter(function(item){
+      return item.text.toLowerCase().indexOf(q) !== -1 ||
+             item.snippet.toLowerCase().indexOf(q) !== -1;
+    }).slice(0, 20);
+    if(matches.length === 0){
+      searchResults.innerHTML = '<li class="sr-empty">No results for \"' + q.replace(/</g,'&lt;') + '\"</li>';
+      return;
+    }
+    matches.forEach(function(m){
+      var li = document.createElement('li');
+      var a = document.createElement('a');
+      if(m.page === here){
+        a.href = '#' + m.id;
+        a.addEventListener('click', closeSearch);
+      } else {
+        a.href = m.page + '#' + m.id;
+      }
+      a.textContent = m.text;
+      if(m.page !== here && m.pageTitle){
+        var span = document.createElement('span');
+        span.className = 'sr-page';
+        span.textContent = m.pageTitle;
+        a.appendChild(span);
+      }
+      li.appendChild(a);
+      searchResults.appendChild(li);
+    });
+  }
 })();
 """
 
 
+def _slugify(text):
+    """GitHub-style slug for heading anchors."""
+    import re
+    return re.sub(r'\s', '-', re.sub(r'[^\w\s-]', '', text.lower().strip()))
+
+
+def _extract_headings(md_text, html_file, page_title):
+    """Pull h1/h2/h3 from markdown text and return search-index entries."""
+    import re
+    entries = []
+    used = {}
+    for m in re.finditer(r'^(#{1,3})\s+(.+)', md_text, re.MULTILINE):
+        level = len(m.group(1))
+        text = m.group(2).strip()
+        base = _slugify(text)
+        slug = base
+        i = 1
+        while slug in used:
+            slug = f"{base}-{i}"
+            i += 1
+        used[slug] = True
+        # grab first ~120 chars after the heading for snippet
+        pos = m.end()
+        snippet = ""
+        rest = md_text[pos:pos + 300].strip()
+        for line in rest.split("\n"):
+            line = line.strip()
+            if line and not line.startswith("#") and not line.startswith("```") and not line.startswith("|"):
+                snippet = line[:120]
+                break
+        entries.append({
+            "text": text,
+            "snippet": snippet,
+            "id": slug,
+            "page": html_file,
+            "pageTitle": page_title,
+        })
+    return entries
+
+
 def main():
+    import json
+
     SITE.mkdir(exist_ok=True)
     ASSETS.mkdir(exist_ok=True)
     (ASSETS / "app.css").write_text(APP_CSS, encoding="utf-8")
     (ASSETS / "app.js").write_text(APP_JS, encoding="utf-8")
 
+    # 1) Build cross-page search index from all markdown files
+    all_entries = []
+    texts = {}
     for src, out, title in PAGES:
         text = (HERE / src).read_text(encoding="utf-8")
+        texts[src] = text
+        all_entries.extend(_extract_headings(text, out, title))
+
+    search_json = json.dumps(all_entries, ensure_ascii=False)
+
+    # 2) Generate each HTML page
+    for src, out, title in PAGES:
+        text = texts[src]
         b64 = base64.b64encode(text.encode("utf-8")).decode("ascii")
         html = (PAGE_TEMPLATE
                 .replace("__TITLE__", title)
                 .replace("__NAVDATA__", NAV_JSON)
+                .replace("__SEARCHINDEX__", search_json)
                 .replace("__B64__", b64))
         (SITE / out).write_text(html, encoding="utf-8")
         print("wrote", (SITE / out).relative_to(HERE))

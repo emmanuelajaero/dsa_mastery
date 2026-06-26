@@ -62,6 +62,11 @@ def climb_stairs(n):
 ### Complexity
 **`O(n)`** time, **`O(1)`** space.
 
+### ⚠️ Watch out
+- **`n = 0`:** return `1` (there's 1 way to stand on the ground) or `0` depending on the problem — read carefully.
+- **`n = 1`:** both `a` and `b` are `1` — the loop doesn't execute — make sure you return the right variable.
+- **Forgetting to initialize both `a` and `b`:** uninitialized values produce garbage.
+
 ### Practice
 Climbing Stairs (70), Fibonacci Number (509), Min Cost Climbing Stairs (746).
 
@@ -97,6 +102,11 @@ def max_subarray(nums):
 
 ### Complexity
 **`O(n)`** time, **`O(1)`** space.
+
+### ⚠️ Watch out
+- **All-negative array:** Kadane still works (`cur = max(x, cur + x)` picks the least-negative) — but if you initialize `best = 0` instead of `nums[0]`, you'll return `0` incorrectly.
+- **Single element:** return that element — `cur = best = nums[0]` handles this.
+- **Maximum Product variant (LC 152):** track both max and min (a negative × negative = positive) — don't reuse the sum template blindly.
 
 ### Practice
 Maximum Subarray (53), Maximum Sum Circular Subarray (918), Maximum Product Subarray (152).
@@ -153,6 +163,11 @@ def can_partition(nums):
 ### Complexity
 **`O(n·W)`** time, **`O(W)`** space.
 
+### ⚠️ Watch out
+- **Iterating capacity UPWARD instead of DOWNWARD:** this turns 0/1 into unbounded (each item reused) — the #1 knapsack bug.
+- **Weight > capacity:** the inner loop's `range(W, weights[i]-1, -1)` handles this, but if you write `range(W, -1, -1)` you'll index `dp[w - weights[i]]` out of bounds.
+- **Items with weight 0:** infinite items fit — usually not a valid input, but guard if needed.
+
 ### Practice
 Partition Equal Subset Sum (416), Target Sum (494), Last Stone Weight II (1049).
 
@@ -188,6 +203,11 @@ def coin_change(coins, amount):
 
 ### Complexity
 **`O(n·amount)`** time, **`O(amount)`** space.
+
+### ⚠️ Watch out
+- **Iterating capacity DOWNWARD by mistake:** that makes it 0/1 knapsack (each coin used once).
+- **`amount = 0`:** the answer is `0` coins, not impossible — `dp[0] = 0`.
+- **No valid combination:** check `dp[amount] != INF` before returning.
 
 ### Practice
 Coin Change (322), Coin Change II (518), Perfect Squares (279).
@@ -233,8 +253,32 @@ def lcs(a, b):
 # lcs("abcde", "ace") -> 3
 ```
 
-### Complexity
-**`O(n·m)`** time, **`O(n·m)`** space (reducible to `O(m)` with two rows).
+### Space optimization — rolling row
+Only two rows of the table are ever needed at once. Replace the 2D array with two 1D arrays:
+
+```python
+def lcs_optimized(a, b):
+    n, m = len(a), len(b)
+    prev = [0] * (m + 1)
+    for i in range(1, n + 1):
+        curr = [0] * (m + 1)
+        for j in range(1, m + 1):
+            if a[i - 1] == b[j - 1]:
+                curr[j] = prev[j - 1] + 1
+            else:
+                curr[j] = max(prev[j], curr[j - 1])
+        prev = curr
+    return prev[m]
+
+# lcs_optimized("abcde", "ace") -> 3
+```
+
+> This is a common interview follow-up: "Can you do it in `O(m)` space?" The answer is always: keep only the previous row.
+
+### ⚠️ Watch out
+- **Empty strings:** `lcs("", anything)` = 0 — the `range(1, n+1)` loop simply doesn't execute.
+- **Both strings identical:** LCS = the string itself — every cell takes the diagonal path.
+- **Rolling-row indexing:** `curr[j]` uses `prev[j-1]` (diagonal), `prev[j]` (above), and `curr[j-1]` (left) — get these right or the answer is wrong.
 
 ### Practice
 Longest Common Subsequence (1143), Delete Operation for Two Strings (583), Shortest Common Supersequence (1092).
@@ -277,6 +321,12 @@ def length_of_lis(nums):
 ### Complexity
 **`O(n log n)`** time, **`O(n)`** space. (The `O(n^2)` DP variant: `dp[i]=max(dp[j]+1)`.)
 
+### ⚠️ Watch out
+- **All-decreasing input:** LIS = 1 (just one element) — `tails` only ever has one entry.
+- **Duplicate values:** `bisect_left` finds the first `>=` position — duplicates replace existing tails, they don't extend.
+- **Reconstructing the actual subsequence:** the `tails` array does NOT store the actual LIS — you need a separate parent-tracking array.
+- **`bisect_left` vs `bisect_right`:** for *strictly* increasing, use `bisect_left`; for *non-decreasing*, use `bisect_right`.
+
 ### Practice
 Longest Increasing Subsequence (300), Number of LIS (673), Russian Doll Envelopes (354).
 
@@ -318,6 +368,12 @@ def longest_palindrome_subseq(s):
 
 ### Complexity
 **`O(n^2)`** time, **`O(n^2)`** space.
+
+### ⚠️ Watch out
+- **Single character:** always a palindrome of length 1 — `dp[i][i] = 1` base case.
+- **Entire string is a palindrome:** every cell `dp[i][j]` takes the `+2` diagonal path — result = `n`.
+- **Fill order:** iterate `i` from `n-1` down to `0` so that `dp[i+1][...]` is already filled — filling upward causes wrong answers.
+- **Palindromic *substring* vs *subsequence*:** different problems! Substring requires contiguity (expand from center); subsequence allows gaps (this DP).
 
 ### Practice
 Longest Palindromic Subsequence (516), Palindromic Substrings (647), Min Insertions to Make Palindrome (1312).
@@ -367,8 +423,33 @@ def edit_distance(a, b):
 # edit_distance("horse", "ros") -> 3
 ```
 
-### Complexity
-**`O(n·m)`** time, **`O(n·m)`** space (reducible to `O(m)`).
+### Space optimization — rolling row
+Just like LCS, only two rows are needed. Use `prev` and `curr`:
+
+```python
+def edit_distance_optimized(a, b):
+    n, m = len(a), len(b)
+    prev = list(range(m + 1))            # base: edit "" into b[:j] = j inserts
+    for i in range(1, n + 1):
+        curr = [i] + [0] * m             # base: edit a[:i] into "" = i deletes
+        for j in range(1, m + 1):
+            if a[i - 1] == b[j - 1]:
+                curr[j] = prev[j - 1]
+            else:
+                curr[j] = 1 + min(prev[j - 1], prev[j], curr[j - 1])
+        prev = curr
+    return prev[m]
+
+# edit_distance_optimized("horse", "ros") -> 3
+```
+
+> Interview follow-up: "Optimize to `O(m)` space." Same rolling-row technique as LCS.
+
+### ⚠️ Watch out
+- **One string empty:** `edit_distance("", "abc")` = 3 (insert all) — the base-case row/column handles this.
+- **Both strings identical:** every cell takes the diagonal `dp[i-1][j-1]` path — result = 0.
+- **Confusing insert/delete/replace:** insert adds to `a`, delete removes from `a`, replace swaps in `a` — the three neighbors are `dp[i][j-1]`, `dp[i-1][j]`, `dp[i-1][j-1]`.
+- **Rolling-row: `curr[0] = i`** — forgetting this base case for each row gives wrong answers.
 
 ### Practice
 Edit Distance (72), Delete Operation for Two Strings (583), Minimum ASCII Delete Sum (712).
@@ -426,6 +507,12 @@ def find_target_sum_ways(nums, target):
 ### Complexity
 **`O(n·target)`** time, **`O(target)`** space.
 
+### ⚠️ Watch out
+- **Target = 0:** always `True` (the empty subset sums to 0) — `dp[0] = True` handles this.
+- **Negative numbers:** standard subset sum assumes non-negative values — with negatives, the target range shifts and you need offset indexing.
+- **Large target:** `O(n·target)` can be slow if `target` is huge — check constraints.
+- **Target Sum reduction:** `(total + target)` must be even and `abs(target) ≤ total` — otherwise return 0 immediately.
+
 ### Practice
 Partition Equal Subset Sum (416), Target Sum (494), Partition to K Equal Sum Subsets (698).
 
@@ -467,6 +554,12 @@ def word_break(s, word_dict):
 ### Complexity
 **`O(n^2)`** (substring hashing aside) time, **`O(n)`** space.
 
+### ⚠️ Watch out
+- **No valid segmentation:** `dp[n]` stays `False` — make sure you return `False`, not crash.
+- **Single-character words:** every character might be a valid word — the inner loop checks all split points.
+- **Very long strings:** the `O(n²)` inner loop can be slow — optimize with a Trie or limit `j` to `max(word_length)`.
+- **Palindrome Partitioning II:** different problem (min cuts) — don't confuse with Word Break.
+
 ### Practice
 Word Break (139), Palindrome Partitioning II (132), Concatenated Words (472).
 
@@ -503,6 +596,11 @@ def num_trees(n):
 
 ### Complexity
 **`O(n^2)`** time, **`O(n)`** space.
+
+### ⚠️ Watch out
+- **`n = 0`:** C(0) = 1 (the empty structure is valid) — don't return 0.
+- **Confusing Catalan with Fibonacci:** Catalan multiplies left × right subtree counts; Fibonacci adds.
+- **Generate Parentheses:** the *count* is Catalan, but *generating* all strings requires backtracking, not DP.
 
 ### Practice
 Unique Binary Search Trees (96), Generate Parentheses (22).
@@ -549,6 +647,12 @@ def max_coins(nums):
 ### Complexity
 **`O(n^3)`** time, **`O(n^2)`** space.
 
+### ⚠️ Watch out
+- **Interval length starts at 2, not 1:** single-element intervals are base cases (cost = 0).
+- **Off-by-one on `k` range:** `k` iterates *inside* `(left, right)`, not inclusive of the boundaries.
+- **Fill order:** you must fill by increasing interval length — filling row-by-row gives wrong answers.
+- **Boundary padding (Burst Balloons):** the `[1] + nums + [1]` trick avoids messy boundary checks.
+
 ### Practice
 Min Score Triangulation (1039), Burst Balloons (312), Minimum Cost to Merge Stones (1000).
 
@@ -592,6 +696,12 @@ def num_decodings(s):
 ### Complexity
 **`O(n)`** time, **`O(1)`** space.
 
+### ⚠️ Watch out
+- **Leading zeros:** `"0"` is invalid as a single-digit decode — `if s[i] == "0": cur += 0` (skip).
+- **`"10"` and `"20"`:** valid as two-digit, but `"0"` alone is invalid — the `"10" <= s[i-1:i+1] <= "26"` check catches this.
+- **`"30"`, `"40"`, etc.:** invalid — no single-digit and no valid two-digit → `cur = 0` → return 0.
+- **Counting ways (add) vs best value (max/min):** this is additive DP, not optimization DP.
+
 ### Practice
 Decode Ways (91), Count Number of Texts (2266).
 
@@ -631,6 +741,12 @@ def min_path_sum(grid):
 
 ### Complexity
 **`O(m·n)`** time, **`O(n)`** space (rolling row).
+
+### ⚠️ Watch out
+- **Single-row or single-column grid:** only one path exists (all right or all down) — the loop still works, but verify.
+- **Obstacles:** set `dp[r][c] = INF` (or 0 for counting) when a cell is blocked — don't forget to skip it.
+- **Rolling-row space optimization:** only keep `dp[c]` for the current row — `dp[c] = grid[r][c] + min(dp[c], dp[c-1])`.
+- **Longest Increasing Path (LC 329):** this is NOT simple grid DP — it requires DFS + memoization because you can move in all 4 directions.
 
 ### Practice
 Unique Paths (62), Minimum Path Sum (64), Longest Increasing Path in a Matrix (329).
@@ -672,6 +788,12 @@ def rob(root):
 ### Complexity
 **`O(n)`** time, **`O(h)`** space (recursion depth = tree height).
 
+### ⚠️ Watch out
+- **Leaf nodes (no children):** `dfs(None)` returns `(0, 0)` — make sure this base case is correct.
+- **Root-only tree:** `dfs` returns `(root.val, 0)` — answer is `root.val`.
+- **Returning a tuple, not a single value:** Tree DP almost always returns multiple states per node.
+- **Binary Tree Maximum Path Sum (LC 124):** the "path" can span left-root-right, but a node can only contribute one branch upward — tricky.
+
 ### Practice
 House Robber III (337), Binary Tree Maximum Path Sum (124), Binary Tree Cameras (968).
 
@@ -710,6 +832,12 @@ def find_cheapest_price(n, flights, src, dst, k):
 
 ### Complexity
 **`O(K·E)`** time, **`O(V)`** space.
+
+### ⚠️ Watch out
+- **Unreachable destination:** `dist[dst]` stays `INF` — return `-1`.
+- **Forgetting the snapshot:** without `snapshot = dist[:]`, you use freshly-updated values in the same round, which violates the bounded-stops constraint.
+- **Negative edges:** Bellman-Ford handles negatives, but not *negative cycles* — detect them with an extra round.
+- **K = 0:** only direct flights from `src` — check if there's a direct edge.
 
 ### Practice
 Cheapest Flights Within K Stops (787), Find the City With Smallest Number of Neighbors (1334).
@@ -764,6 +892,12 @@ def count_unique_digits(n):
 ### Complexity
 **`O(L · 2^10 · 2 · 2 · 10)`** ≈ states × transitions; effectively constant in `L`.
 
+### ⚠️ Watch out
+- **Leading zeros (the `started` flag):** `007` is not a valid 3-digit number — skip digit 0 until you've placed a non-zero digit.
+- **`n = 0`:** usually means the range is `[0, 0]` — return 1 (just the number 0).
+- **`tight` propagation:** `tight and d == hi` — if you forget `and d == hi`, subsequent digits won't be constrained.
+- **Large digit counts:** Digit DP is efficient (`O(digits × states × 10)`), but make sure your `@lru_cache` can handle the state space.
+
 ### Practice
 Count Numbers with Unique Digits (357), Number of Digit One (233), Numbers At Most N Given Digit Set (902).
 
@@ -811,6 +945,12 @@ def shortest_tour(dist):
 ### Complexity
 **`O(2^n · n^2)`** time, **`O(2^n · n)`** space.
 
+### ⚠️ Watch out
+- **n > 20:** `2^20` = 1M states — already at the limit. `n > 20` means > 1M states × n transitions — too slow.
+- **Forgetting to check `(mask >> j) & 1`:** processing an already-visited city produces wrong answers.
+- **Return to start:** TSP requires adding `dist[i][0]` at the end — don't forget the return leg.
+- **Subset vs permutation:** Bitmask DP over subsets is `O(2^n · n)` — don't confuse with `O(n!)` permutation enumeration.
+
 ### Practice
 Min Work Sessions to Finish Tasks (1986), Fair Distribution of Cookies (2305), Shortest Path Visiting All Nodes (847).
 
@@ -856,6 +996,11 @@ def knight_probability(n, k, row, col):
 ### Complexity
 **`O(k · n^2 · 8)`** time, **`O(n^2)`** space.
 
+### ⚠️ Watch out
+- **Floating-point precision:** probabilities can get very small — accumulated floating-point error may matter. Usually fine for LeetCode.
+- **Absorbing states (off-board):** once the knight leaves the board, it stays gone — don't add probability back.
+- **Summing probabilities > 1:** each move divides by 8, so the total stays ≤ 1 — if your answer > 1, there's a bug.
+
 ### Practice
 Knight Probability in Chessboard (688), Soup Servings (808), New 21 Game (837).
 
@@ -899,6 +1044,12 @@ def max_profit_cooldown(prices):
 
 ### Complexity
 **`O(n)`** time, **`O(1)`** space.
+
+### ⚠️ Watch out
+- **Ending in the wrong state:** `return max(sold, rest)` — never end while holding stock (that's unrealized value).
+- **Initial `hold = -inf`:** you can't sell what you don't own — starting `hold = 0` is a bug.
+- **Multiple transaction variants (LC 123, 188):** add a `k` dimension for max transactions — the state machine generalizes.
+- **Fee variant (LC 714):** subtract `fee` on sell, not on buy — either works but be consistent.
 
 ### Practice
 Best Time to Buy/Sell with Cooldown (309), Best Time to Buy/Sell Stock III (123).

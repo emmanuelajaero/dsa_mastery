@@ -28,6 +28,8 @@ copy-code buttons, and a light/dark toggle. It runs **fully offline**.
 | [`01-core-patterns.md`](./01-core-patterns.md) | The 15 core patterns (arrays → trees → graphs → backtracking). Each with diagram + code + complexity. |
 | [`02-dynamic-programming.md`](./02-dynamic-programming.md) | The 20 DP patterns, easy → hard, each with the recurrence and Python. |
 | [`03-flashcards.md`](./03-flashcards.md) | Rapid-recall Q&A + a spaced-repetition schedule. Use this to *test* yourself. |
+| [`04-advanced-patterns.md`](./04-advanced-patterns.md) | Dijkstra's Algorithm & Union-Find — two bonus graph patterns that appear constantly in interviews. |
+| [`05-progress-tracker.md`](./05-progress-tracker.md) | Checklist tracker: mark off Read, Re-derive, LeetCode solved, Day 1/3/7 reviews. |
 
 **Recommended loop:** Read a pattern → cover the code and re-derive it → run it →
 do 2 LeetCode problems → answer its flashcards 1 day, 3 days, and 7 days later.
@@ -157,9 +159,11 @@ Full tables live in [`00-complexity-foundations.md`](./00-complexity-foundations
 ## A 4-week study plan
 
 - **Week 1 — Arrays/Strings/Lists:** Patterns 1–9. Two problems each.
-- **Week 2 — Trees/Graphs/Backtracking:** Patterns 10–15. Two problems each.
+- **Week 2 — Trees/Graphs/Backtracking + Advanced:** Patterns 10–15, plus Dijkstra & Union-Find. Two problems each.
 - **Week 3 — DP foundations:** DP patterns 1–10.
 - **Week 4 — DP advanced + review:** DP patterns 11–20, then re-test all flashcards.
+
+Track your progress in [`05-progress-tracker.md`](./05-progress-tracker.md).
 
 > **Golden rule:** You don't *memorize solutions*, you *internalize templates*. For each
 > pattern, be able to write the skeleton from a blank screen before moving on.

@@ -27,6 +27,14 @@ one, mark it and review it sooner.
 | "Islands / flood fill / regions on a grid" | Matrix Traversal |
 | "ALL permutations / combinations / subsets" | Backtracking |
 | "Best/min/max/number-of-ways over choices, overlapping subproblems" | Dynamic Programming |
+| "Shortest path in a weighted graph, non-negative edges" | Dijkstra's Algorithm |
+| "Are these nodes connected? / merge groups / detect cycle in undirected" | Union-Find (DSU) |
+| "Count BSTs / balanced parenthesizations" | Catalan Numbers (DP) |
+| "Best split of an interval, combine halves" | Matrix Chain / Interval DP |
+| "Count valid numbers up to N with a digit property" | Digit DP |
+| "Small n (≤20), track which items chosen" | Bitmask DP |
+| "Expected value / survival probability over steps" | Probability DP |
+| "Buy/sell/hold/rest — a few discrete modes" | State Machine DP |
 
 ---
 
@@ -52,6 +60,8 @@ one, mark it and review it sooner.
 | LIS (optimal) | `O(n log n)` / `O(n)` |
 | Interval DP (Matrix Chain) | `O(n^3)` / `O(n^2)` |
 | Bitmask DP | `O(2^n·n)` / `O(2^n)` |
+| Dijkstra | `O((V+E) log V)` / `O(V+E)` |
+| Union-Find (DSU) | `O(α(n))` amortized per op / `O(n)` |
 
 ---
 
@@ -73,6 +83,16 @@ one, mark it and review it sooner.
 | Grid path | `dp[r][c] = grid[r][c] + min/sum(dp[r-1][c], dp[r][c-1])` |
 | Tree DP (rob) | `rob = val + skip(children); skip = max(child states)` |
 | State machine (cooldown) | `sold=hold+p; hold=max(hold,rest-p); rest=max(rest,prev_sold)` |
+| Catalan / unique BST (DP 11) | `dp[n] = Σ dp[i-1]·dp[n-i]` for each root |
+| Matrix Chain / interval (DP 12) | `dp[i][j] = min over k (dp[i][k]+dp[k+1][j]+cost(i,k,j))` |
+| Count Distinct Ways (DP 13) | `dp[i] += dp[i-1] (valid 1-digit) + dp[i-2] (valid 2-digit)` |
+| Grid DP (DP 14) | `dp[r][c] = grid[r][c] + min(dp[r-1][c], dp[r][c-1])` |
+| Tree DP (DP 15) | `rob = val + skip(children); skip = max(child_rob, child_skip)` |
+| Graph DP / Bellman-Ford (DP 16) | `dist[v] = min(dist[v], snapshot[u] + w)` per round |
+| Digit DP (DP 17) | `dp(pos, mask, tight, started)` → sum over valid digits `0..hi` |
+| Bitmask DP / TSP (DP 18) | `dp[mask|bit][j] = min(dp[mask][i] + dist[i][j])` |
+| Probability DP (DP 19) | `dp[k][r][c] = Σ dp[k-1][src_r][src_c] / num_moves` |
+| State Machine DP (DP 20) | `sold=hold+p; hold=max(hold,rest-p); rest=max(rest,prev_sold)` |
 
 ---
 
@@ -115,6 +135,23 @@ one, mark it and review it sooner.
 10. **Q:** What's the state in Digit DP and why "tight"?
     **A:** `(position, tight, ...)`. `tight` tracks whether the prefix still equals the
     bound's prefix, which caps the next digit's max value.
+
+11. **Q:** Why does Dijkstra fail with negative edges?
+    **A:** Dijkstra greedily locks the shortest distance when a node is popped. A
+    later negative edge could have offered a shorter path, but the node is already
+    finalized. Use Bellman-Ford for negative edges.
+
+12. **Q:** What does "path compression" do in Union-Find?
+    **A:** During `find(x)`, it re-points every node on the path directly to the root,
+    flattening the tree. This makes future `find` calls near `O(1)` (amortized `O(α(n))`).
+
+13. **Q:** In Bitmask DP, why is `n` limited to about 20?
+    **A:** The state space is `2^n`. At `n=20`, that's ~1 million states — feasible.
+    At `n=25` it's 33 million, and at `n=30` it's over 1 billion — too much memory and time.
+
+14. **Q:** How do you count *ways* (combinatorial) vs find *best* (optimization) in DP?
+    **A:** Ways: use `+=` (sum contributions). Best: use `max()` or `min()`. Same
+    recurrence structure, different aggregation operator.
 
 ---
 
