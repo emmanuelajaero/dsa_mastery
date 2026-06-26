@@ -64,6 +64,48 @@
     pre.appendChild(btn);
   });
 
+  // ---- inject "Play this" deep-links next to gamified concepts/templates/examples ----
+  (function(){
+    var GIDX = window.__GAME_INDEX__ || {};
+    function gnorm(s){ return s.toLowerCase().replace(/[^a-z0-9]/g,''); }
+    function stripLabel(s){ return s.replace(/^\s*([0-9]+|[a-zA-Z])\.\s*/, ''); }
+    function gameHref(id, mode){ return 'game/index.html?pattern=' + encodeURIComponent(id) + (mode ? ('&mode=' + mode) : ''); }
+    function playLink(id, mode, label, small){
+      var a = document.createElement('a');
+      a.className = 'play-btn' + (small ? ' play-btn-sm' : '');
+      a.href = gameHref(id, mode);
+      a.innerHTML = label;
+      return a;
+    }
+    // 1) concept buttons on each pattern heading
+    article.querySelectorAll('h2').forEach(function(h){
+      var txt = h.textContent.replace(/#$/, '');
+      var id = GIDX[gnorm(stripLabel(txt))];
+      if(!id){ return; }
+      h.setAttribute('data-pattern', id);
+      var bar = document.createElement('div'); bar.className = 'gp-bar';
+      bar.appendChild(playLink(id, '', '&#127918; Play this pattern', false));
+      if(h.nextSibling){ h.parentNode.insertBefore(bar, h.nextSibling); } else { h.parentNode.appendChild(bar); }
+    });
+    // 2) template/example buttons on each Python code block within a pattern section
+    article.querySelectorAll('pre > code.language-python').forEach(function(code){
+      var pre = code.parentElement;
+      var p = pre.previousElementSibling, sub = '', secId = null;
+      while(p){
+        if(p.tagName === 'H3' && !sub){ sub = p.textContent.replace(/#$/, ''); }
+        if(p.tagName === 'H2'){ secId = p.getAttribute('data-pattern'); break; }
+        p = p.previousElementSibling;
+      }
+      if(!secId){ return; }
+      var isExample = /worked example/i.test(sub);
+      var mode = isExample ? 'cloze' : 'forge';
+      var label = isExample ? '&#127918; Play this example' : '&#127918; Play this template';
+      var bar = document.createElement('div'); bar.className = 'gp-bar gp-bar-sm';
+      bar.appendChild(playLink(secId, mode, label, true));
+      if(pre.nextSibling){ pre.parentNode.insertBefore(bar, pre.nextSibling); } else { pre.parentNode.appendChild(bar); }
+    });
+  })();
+
   // ---- sidebar nav ----
   var navList = document.getElementById('navList');
   var here = location.pathname.split('/').pop() || 'index.html';
@@ -124,4 +166,87 @@
   });
   scrim.addEventListener('click', closeNav);
   navList.addEventListener('click', closeNav);
+
+  // ---- search ----
+  var searchBtn = document.getElementById('searchBtn');
+  var searchOverlay = document.getElementById('searchOverlay');
+  var searchInput = document.getElementById('searchInput');
+  var searchClose = document.getElementById('searchClose');
+  var searchResults = document.getElementById('searchResults');
+
+  // Build local index from rendered headings + first paragraph
+  var localIndex = [];
+  headings.forEach(function(h){
+    if(h.tagName === 'H1' || h.tagName === 'H2' || h.tagName === 'H3'){
+      var text = h.textContent.replace(/#$/,'').trim();
+      // grab following paragraph text for richer search
+      var next = h.nextElementSibling;
+      var snippet = '';
+      if(next && (next.tagName === 'P' || next.tagName === 'BLOCKQUOTE')){
+        snippet = next.textContent.substring(0, 120);
+      }
+      localIndex.push({text:text, snippet:snippet, id:h.id, page:here, pageTitle:''});
+    }
+  });
+
+  // Merge with cross-page index
+  var fullIndex = (window.__SEARCH_INDEX__ || []).filter(function(e){ return e.page !== here; });
+  fullIndex = localIndex.concat(fullIndex);
+
+  function openSearch(){
+    searchOverlay.classList.add('open');
+    setTimeout(function(){ searchInput.focus(); }, 50);
+  }
+  function closeSearch(){
+    searchOverlay.classList.remove('open');
+    searchInput.value = '';
+    searchResults.innerHTML = '';
+  }
+  searchBtn.addEventListener('click', openSearch);
+  searchClose.addEventListener('click', closeSearch);
+  // Close on Escape
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape' && searchOverlay.classList.contains('open')){ closeSearch(); }
+    // Ctrl/Cmd + K to open search
+    if((e.ctrlKey || e.metaKey) && e.key === 'k'){ e.preventDefault(); openSearch(); }
+  });
+
+  var searchTimer;
+  searchInput.addEventListener('input', function(){
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(doSearch, 150);
+  });
+
+  function doSearch(){
+    var q = searchInput.value.trim().toLowerCase();
+    searchResults.innerHTML = '';
+    if(!q){ return; }
+    var matches = fullIndex.filter(function(item){
+      return item.text.toLowerCase().indexOf(q) !== -1 ||
+             item.snippet.toLowerCase().indexOf(q) !== -1;
+    }).slice(0, 20);
+    if(matches.length === 0){
+      searchResults.innerHTML = '<li class="sr-empty">No results for \"' + q.replace(/</g,'&lt;') + '\"</li>';
+      return;
+    }
+    matches.forEach(function(m){
+      var li = document.createElement('li');
+      var a = document.createElement('a');
+      if(m.page === here){
+        a.href = '#' + m.id;
+        a.addEventListener('click', closeSearch);
+      } else {
+        a.href = m.page + '#' + m.id;
+      }
+      a.textContent = m.text;
+      if(m.page !== here && m.pageTitle){
+        var span = document.createElement('span');
+        span.className = 'sr-page';
+        span.textContent = m.pageTitle;
+        a.appendChild(span);
+      }
+      li.appendChild(a);
+      searchResults.appendChild(li);
+    });
+  }
 })();
