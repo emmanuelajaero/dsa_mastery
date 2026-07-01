@@ -143,7 +143,7 @@ function floatPoints(txt){
 /* ============================ game state ============================ */
 var G={};
 var MODES=[
-  {id:"forge",  emoji:"&#128296;", name:"Code Forge",        desc:"Reorder the template. Dodge the poisoned lines."},
+  {id:"forge",  emoji:"&#128296;", name:"Code Forge",        desc:"Rebuild the code. Easy lines &rarr; Hard tokens."},
   {id:"cloze",  emoji:"&#129513;", name:"Fill the Gap",      desc:"Drop the right token into every blank."},
   {id:"bug",    emoji:"&#128030;", name:"Bug Hunt",          desc:"One line was poisoned. Hunt it down."},
   {id:"name",   emoji:"&#128373;", name:"Name That Pattern", desc:"Match the clue to its pattern."},
@@ -152,7 +152,15 @@ var MODES=[
   {id:"survival",emoji:"&#128128;",name:"The Gauntlet",      desc:"All modes. 3 lives. A ticking clock. How far?"}
 ];
 var SCOPES=[{id:"all",n:"All 37"},{id:"core",n:"Core 15"},{id:"dp",n:"DP 20"},{id:"advanced",n:"Advanced"}];
+var DIFFS=[{id:"easy",n:"Easy"},{id:"medium",n:"Medium"},{id:"hard",n:"Hard"}];
+var DIFF_DESC={
+  easy:"Reorder whole lines &mdash; dodge the poison lines.",
+  medium:"Rebuild from jumbled code chunks &mdash; order matters.",
+  hard:"Rebuild from single tokens &mdash; some are poison."
+};
 var scope="all";
+var diff="easy";    /* difficulty for Code Forge: easy | medium | hard */
+var forgeSrc="template"; /* which snippet Code Forge rebuilds: template | example */
 var focusId=null;   /* when set (via ?pattern=...), every "main" question targets this one pattern */
 
 function pool(){
@@ -187,6 +195,8 @@ function renderHome(){
      '<div class="stat"><b>'+stars+'/'+total+'</b><span>Mastery &#9733;</span></div>'+
      '</div>';
   if(!focusId){ h+='<div class="section-label">Pattern pack</div><div class="scope" id="scope"></div>'; }
+  h+='<div class="section-label">Code Forge difficulty</div><div class="scope" id="diffSel"></div>'+
+     '<div class="diff-note" id="diffNote">'+DIFF_DESC[diff]+'</div>';
   h+='<div class="section-label">'+(focusId?'Pick a drill for this pattern':'Choose your trial')+'</div><div class="modes" id="modeGrid"></div>';
   h+='<div class="section-label">How it works</div><div class="howto">'+
      '<b>Memorize by doing.</b> Each mode quizzes the real templates &amp; examples from your study guide. '+
@@ -202,6 +212,12 @@ function renderHome(){
     var b=ce("button", s.id===scope?"active":"", s.n);
     b.onclick=function(){ scope=s.id; SFX.click(); renderHome(); };
     sc.appendChild(b);
+  });
+  var ds=$("#diffSel");
+  if(ds) DIFFS.forEach(function(d){
+    var b=ce("button", d.id===diff?"active":"", d.n);
+    b.onclick=function(){ diff=d.id; SFX.click(); renderHome(); };
+    ds.appendChild(b);
   });
   var mg=$("#modeGrid");
   MODES.forEach(function(m){
@@ -222,15 +238,19 @@ function renderHome(){
 }
 
 /* ============================ session flow ============================ */
-function startSession(mode){
-  G={ mode:mode, survival:(mode==="survival"), score:0, streak:0, combo:0,
+function startSession(mode, opts){
+  opts=opts||{};
+  G={ mode:mode, survival:(mode==="survival"),
+      diff:opts.diff||diff, src:(opts.src==="example"?"example":"template"),
+      score:0, streak:0, combo:0,
       lives:(mode==="survival"?3:0), qIndex:0, qTotal:(mode==="survival"?Infinity:10),
       correct:0, answered:false, curId:null, timer:null, timeLeft:0, timeMax:0 };
   show(gameEl); nextQuestion();
 }
 
 function timeForMode(mode){
-  var base={forge:34,cloze:28,bug:20,name:13,bigo:15,mnemo:13}[mode]||16;
+  var forgeBase=(G.diff==="hard")?60:(G.diff==="medium")?46:34;
+  var base={forge:forgeBase,cloze:28,bug:20,name:13,bigo:15,mnemo:13}[mode]||16;
   return Math.max(7, base - Math.floor(G.qIndex/4));
 }
 
@@ -337,7 +357,7 @@ function endSession(){
      '<button class="btn" id="homeBtn">Home</button></div>';
   h+='</div>';
   sumEl.innerHTML=h; show(sumEl);
-  $("#againBtn").onclick=function(){ SFX.click(); startSession(G.mode); };
+  $("#againBtn").onclick=function(){ SFX.click(); startSession(G.mode,{diff:G.diff, src:G.src}); };
   $("#homeBtn").onclick=function(){ SFX.click(); renderHome(); show(homeEl); };
 }
 
@@ -383,12 +403,69 @@ function renderOptions(host, options, correctVal, isMono, finish, revealFn){
 /* ============================ builders ============================ */
 var BUILDERS={};
 
-/* --- Code Forge: reorder template lines, avoid poison decoys --- */
+/* --- token helpers (Medium / Hard forge) --- */
+function tokenizeLine(line, fine){
+  var t=line.trim();
+  if(!fine){ return t.split(/\s+/).filter(function(x){ return x.length; }); }
+  var re=/(<=|>=|==|!=|\/\/|\*\*|->|"[^"]*"|'[^']*'|\w+|[^\s\w])/g;
+  var out=[], m; while((m=re.exec(t))!==null){ out.push(m[0]); }
+  return out;
+}
+function mutateToken(tok){
+  var out=(TOKEN_MUT[tok]||[]).slice();
+  if(/^\d+$/.test(tok)){ var n=parseInt(tok,10); out.push(String(n+1)); if(n>0) out.push(String(n-1)); }
+  return uniq(out);
+}
+function indentUnits(line){
+  var s=(line&&(line.match(/^[ \t]*/)||[""])[0])||"";
+  return s.replace(/\t/g,"    ").length;
+}
+/* strip a trailing "# ..." comment (respecting quotes) so puzzles don't tokenize prose */
+function stripComment(line){
+  var inS=false, q="";
+  for(var i=0;i<line.length;i++){
+    var ch=line.charAt(i);
+    if(inS){ if(ch===q && line.charAt(i-1)!=="\\") inS=false; }
+    else if(ch==='"'||ch==="'"){ inS=true; q=ch; }
+    else if(ch==="#"){ return line.slice(0,i); }
+  }
+  return line;
+}
+/* code with inline + full-line comments removed (blank lines dropped) */
+function codeNoComments(code){
+  var out=[];
+  code.forEach(function(line){
+    var s=stripComment(line).replace(/\s+$/,"");
+    if(s.trim().length) out.push(s);
+  });
+  return out.length>=2 ? out : code.slice();
+}
+
+/* --- Code Forge: three difficulties, over the template OR the worked example --- */
 BUILDERS.forge=function(){
-  var cands=withTemplate(13);
+  var src=(G.src==="example")?"example":"template";
+  var dff=G.diff||"easy";
+  var maxLines=(dff==="easy")?13:9;
+  if(focusId){
+    var fp=BY_ID[focusId];
+    var fcode=fp[src]||fp.template||fp.example;
+    if(!fcode || fcode.length<2) return null;
+    return (dff==="easy")?forgeEasy(fp,fcode,src):forgeTokens(fp,fcode,dff,src);
+  }
+  var cands=pool().filter(function(p){ var c=p[src]; return c && c.length>=3 && c.length<=maxLines; });
+  if(!cands.length && src==="example"){
+    src="template";
+    cands=pool().filter(function(p){ return p.template && p.template.length>=3 && p.template.length<=maxLines; });
+  }
   if(!cands.length) return null;
   var p=choice(cands);
-  var correct=p.template.slice();
+  var code=p[src]||p.template;
+  return (dff==="easy")?forgeEasy(p,code,src):forgeTokens(p,code,dff,src);
+};
+
+/* Easy: reorder whole lines, avoid poison decoy lines (the classic mode) */
+function forgeEasy(p, correctSrc, src){
+  var correct=correctSrc.slice();
   var decoys=[];
   var attempts=0;
   while(decoys.length<3 && attempts<30){
@@ -401,7 +478,7 @@ BUILDERS.forge=function(){
     }
   }
   /* nasty cross-pattern decoy */
-  var others=withTemplate(20).filter(function(q){ return q.id!==p.id; });
+  var others=pool().filter(function(q){ return q.template && q.id!==p.id; });
   if(others.length){
     var ol=choice(choice(others).template);
     if(correct.indexOf(ol)===-1 && decoys.indexOf(ol)===-1) decoys.push(ol);
@@ -412,7 +489,7 @@ BUILDERS.forge=function(){
 
   return {
     patternId:p.id,
-    instr:'Tap the lines in the right order to rebuild <b>'+esc(p.name)+'</b>. Some lines are <b>poison</b> &mdash; leave them out.',
+    instr:'<b>Easy.</b> Tap the lines in the right order to rebuild the <b>'+esc(p.name)+'</b> '+(src==="example"?"example":"template")+'. Some lines are <b>poison</b> &mdash; leave them out.',
     mount:function(body, actions, finish){
       var sol=ce("div","code-list"); var solEmpty=ce("div","empty-hint","Tap lines below to start building&hellip;");
       body.appendChild(ce("div","pool-label","Your build"));
@@ -430,12 +507,6 @@ BUILDERS.forge=function(){
           sol.appendChild(row);
         });
         bank.innerHTML="";
-        poolLines.forEach(function(line){
-          var used=false, cnt=0;
-          for(var i=0;i<picked.length;i++) if(picked[i]===line) cnt++;
-          var avail=0; for(var j=0;j<poolLines.length;j++) if(poolLines[j]===line) avail++;
-          /* allow duplicates count-correctly */
-        });
         /* render bank as remaining (account for duplicates) */
         var remaining=poolLines.slice();
         picked.forEach(function(l){ var i=remaining.indexOf(l); if(i>=0) remaining.splice(i,1); });
@@ -458,13 +529,103 @@ BUILDERS.forge=function(){
           row.classList.add(picked[i]===correct[i]?"correct":"wrong");
           if(picked[i]!==correct[i]) row.classList.add("shake");
         });
-        var reveal='The correct template:<br><br><span class="mono" style="white-space:pre-wrap">'+esc(correct.join("\n"))+'</span>';
+        var reveal='The correct '+(src==="example"?"example":"template")+':<br><br><span class="mono" style="white-space:pre-wrap">'+esc(correct.join("\n"))+'</span>';
         finish(ok, reveal);
       };
       actions.appendChild(check);
     }
   };
-};
+}
+
+/* Medium (chunks) / Hard (single tokens + poison): assemble tokens into wrapping lines.
+   Each token is a chip of natural width but uniform height; a ↵ chip ends a line. */
+function forgeTokens(p, rawCode, dff, src){
+  var fine=(dff==="hard");
+  var code=codeNoComments(rawCode);  /* puzzle uses code w/o comments; reveal keeps them */
+  var stripped=code.length!==rawCode.length || code.some(function(l,i){ return l!==rawCode[i]; });
+  var target=[]; /* ordered cells: {kind:'tok',val} | {kind:'nl'} */
+  code.forEach(function(line, li){
+    tokenizeLine(line, fine).forEach(function(tk){ target.push({kind:"tok", val:tk}); });
+    if(li<code.length-1) target.push({kind:"nl"});
+  });
+  var chips=[]; var cid=0;
+  target.forEach(function(cell){
+    chips.push(cell.kind==="nl" ? {id:cid++, kind:"nl"} : {id:cid++, kind:"tok", val:cell.val});
+  });
+  if(dff==="hard"){
+    var toks=target.filter(function(c){ return c.kind==="tok"; });
+    var added=0, tries=0;
+    while(added<3 && tries<50 && toks.length){
+      tries++;
+      var muts=mutateToken(choice(toks).val);
+      if(muts.length){ chips.push({id:cid++, kind:"tok", val:choice(muts), poison:true}); added++; }
+    }
+  }
+  var bank=shuffle(chips);
+  var byId={}; bank.forEach(function(c){ byId[c.id]=c; });
+  var picked=[]; /* chip ids in chosen order */
+
+  return {
+    patternId:p.id,
+    instr:(fine
+      ? '<b>Hard.</b> This <b>'+esc(p.name)+'</b> '+(src==="example"?"example":"template")+' is smashed into single <b>tokens</b> &mdash; a few are <b>poison</b>. Tap them in order; use <b>&#8629;</b> to end each line.'
+      : '<b>Medium.</b> This <b>'+esc(p.name)+'</b> '+(src==="example"?"example":"template")+' is broken into <b>chunks</b>. Tap them in the right order; use <b>&#8629;</b> to end each line.'),
+    mount:function(body, actions, finish){
+      body.appendChild(ce("div","pool-label","Your build"));
+      var build=ce("div","forge-lines"); body.appendChild(build);
+      body.appendChild(ce("div","pool-label","Token bank"));
+      var bankEl=ce("div","tok-bank"); body.appendChild(bankEl);
+
+      function newRow(lineIdx){
+        var row=ce("div","forge-row");
+        row.style.paddingLeft=(indentUnits(code[lineIdx])*0.55)+"em";
+        build.appendChild(row);
+        return row;
+      }
+      function draw(){
+        build.innerHTML="";
+        var lineIdx=0, row=newRow(0);
+        if(!picked.length){ row.appendChild(ce("span","tok-hint","Tap tokens below to start building&hellip;")); }
+        picked.forEach(function(id, pos){
+          var chip=byId[id];
+          var b=ce("button","tok picked"+(chip.kind==="nl"?" nl":""), chip.kind==="nl"?"&#8629;":esc(chip.val));
+          b.onclick=(function(pp){ return function(){ if(G.answered) return; picked.splice(pp,1); SFX.click(); draw(); }; })(pos);
+          row.appendChild(b);
+          if(chip.kind==="nl"){ lineIdx++; row=newRow(lineIdx); }
+        });
+        bankEl.innerHTML="";
+        bank.forEach(function(chip){
+          if(picked.indexOf(chip.id)>=0) return;
+          var b=ce("button","tok"+(chip.kind==="nl"?" nl":""), chip.kind==="nl"?"&#8629;":esc(chip.val));
+          b.onclick=function(){ if(G.answered) return; picked.push(chip.id); SFX.click(); draw(); };
+          bankEl.appendChild(b);
+        });
+      }
+      draw();
+
+      var check=ce("button","btn btn-primary","Check build");
+      check.onclick=function(){
+        if(G.answered) return;
+        var cells=picked.map(function(id){ return byId[id]; });
+        var ok = cells.length===target.length && cells.every(function(c,i){
+          var t=target[i]; if(!t||t.kind!==c.kind) return false;
+          return t.kind==="tok" ? (c.val===t.val) : true;
+        });
+        Array.prototype.forEach.call(build.querySelectorAll(".tok"),function(el,i){
+          el.classList.remove("picked");
+          var t=target[i], c=cells[i];
+          var good = !!t && t.kind===c.kind && (t.kind!=="tok" || t.val===c.val);
+          el.classList.add(good?"correct":"wrong");
+          if(!good) el.classList.add("shake");
+        });
+        var reveal='The correct '+(src==="example"?"example":"template")+':<br><br><span class="mono" style="white-space:pre-wrap">'+esc(rawCode.join("\n"))+'</span>'+
+          (stripped?'<br><br><span style="color:var(--dim)">Comments are shown for reference &mdash; the puzzle leaves them out.</span>':'');
+        finish(ok, reveal);
+      };
+      actions.appendChild(check);
+    }
+  };
+}
 
 /* --- Fill the Gap (cloze) --- */
 BUILDERS.cloze=function(){
@@ -661,14 +822,17 @@ $("#themeBtn").onclick=function(){ applyTheme(document.documentElement.getAttrib
 applyTheme(localStorage.getItem("dsa-theme")||"dark");
 updateChips();
 
-/* deep-link: ?pattern=<id>&mode=<mode> focuses the game on one concept */
+/* deep-link: ?pattern=<id>&mode=<mode>&src=template|example&diff=easy|medium|hard */
 (function initFromURL(){
   try{
     var params=new URLSearchParams(location.search);
     var fp=params.get("pattern"), fm=params.get("mode");
+    var fd=params.get("diff"), fs=params.get("src");
+    if(fd==="easy"||fd==="medium"||fd==="hard") diff=fd;
+    if(fs==="example"||fs==="template") forgeSrc=fs;
     if(fp && BY_ID[fp]){
       focusId=fp;
-      if(fm && BUILDERS[fm]){ startSession(fm); return; }
+      if(fm && BUILDERS[fm]){ startSession(fm,{diff:diff, src:forgeSrc}); return; }
     }
   }catch(e){}
   renderHome();

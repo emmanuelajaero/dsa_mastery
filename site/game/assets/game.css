@@ -136,6 +136,28 @@ button{font-family:inherit}
 
 .pool-label{font-size:12px; color:var(--dim); margin:14px 0 6px; font-weight:700; text-transform:uppercase; letter-spacing:.06em}
 
+/* difficulty note under the selector */
+.diff-note{color:var(--dim); font-size:13px; margin:8px 2px 2px}
+
+/* token forge (Medium / Hard): chips of natural width, uniform height, wrapping into lines */
+.forge-lines{display:flex; flex-direction:column; gap:6px; margin:8px 0; background:var(--code); border:1px solid var(--border); border-radius:12px; padding:12px 12px}
+.forge-row{display:flex; flex-wrap:wrap; gap:6px; align-items:center; min-height:36px}
+.tok-bank{display:flex; flex-wrap:wrap; gap:8px; margin:6px 0 2px; padding:12px; background:var(--code); border:1px dashed var(--border); border-radius:12px; min-height:52px}
+.tok{
+  display:inline-flex; align-items:center; justify-content:center; height:34px; padding:0 11px;
+  border-radius:9px; border:1px solid var(--border); background:var(--bg2); color:var(--text);
+  font-family:"SFMono-Regular",Consolas,Menlo,monospace; font-size:13.5px; line-height:1;
+  cursor:pointer; white-space:pre; transition:border-color .12s, background .12s, transform .06s;
+}
+.tok:hover{border-color:var(--accent)}
+.tok:active{transform:scale(.95)}
+.tok.picked{border-color:var(--accent); background:rgba(163,113,247,.14)}
+.tok.nl{min-width:34px; padding:0 8px; border-style:dashed; color:var(--dim); font-size:13px}
+.tok.correct{border-color:var(--good); background:rgba(63,185,80,.16); color:var(--head)}
+.tok.wrong{border-color:var(--bad); background:rgba(248,81,73,.16)}
+.tok.shake{animation:shake .35s}
+.tok-hint{color:var(--dim); font-size:13px; font-style:italic}
+
 /* cloze code block */
 .cloze{background:var(--code); border:1px solid var(--border); border-radius:12px; padding:14px; overflow-x:auto; font-size:13px; line-height:1.8; white-space:pre}
 .blank{

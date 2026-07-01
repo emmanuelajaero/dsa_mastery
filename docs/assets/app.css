@@ -224,6 +224,13 @@ code,pre,kbd{font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monos
 .play-btn:hover{filter:brightness(1.08); text-decoration:none}
 .play-btn-sm{font-size:12px; padding:5px 11px; background:linear-gradient(135deg,#1f6feb,#a371f7)}
 
+/* Code Forge difficulty picker under each code block */
+.forge-bar{display:flex; flex-wrap:wrap; align-items:center; gap:8px}
+.forge-lab{font-size:12.5px; color:var(--text-dim); font-weight:600}
+.play-diff.easy{background:linear-gradient(135deg,#3fb950,#2ea043)}
+.play-diff.medium{background:linear-gradient(135deg,#d29922,#bf8700)}
+.play-diff.hard{background:linear-gradient(135deg,#f778ba,#f85149)}
+
 /* Progress tracker tables - ensure horizontal scroll on mobile */
 .markdown-body table{-webkit-overflow-scrolling:touch; overscroll-behavior-x:contain}
 

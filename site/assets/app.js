@@ -69,7 +69,12 @@
     var GIDX = window.__GAME_INDEX__ || {};
     function gnorm(s){ return s.toLowerCase().replace(/[^a-z0-9]/g,''); }
     function stripLabel(s){ return s.replace(/^\s*([0-9]+|[a-zA-Z])\.\s*/, ''); }
-    function gameHref(id, mode){ return 'game/index.html?pattern=' + encodeURIComponent(id) + (mode ? ('&mode=' + mode) : ''); }
+    function gameHref(id, mode, src, diff){
+      return 'game/index.html?pattern=' + encodeURIComponent(id) +
+        (mode ? ('&mode=' + mode) : '') +
+        (src ? ('&src=' + src) : '') +
+        (diff ? ('&diff=' + diff) : '');
+    }
     function playLink(id, mode, label, small){
       var a = document.createElement('a');
       a.className = 'play-btn' + (small ? ' play-btn-sm' : '');
@@ -87,7 +92,7 @@
       bar.appendChild(playLink(id, '', '&#127918; Play this pattern', false));
       if(h.nextSibling){ h.parentNode.insertBefore(bar, h.nextSibling); } else { h.parentNode.appendChild(bar); }
     });
-    // 2) template/example buttons on each Python code block within a pattern section
+    // 2) Code Forge (easy/medium/hard) buttons on each Python code block in a pattern
     article.querySelectorAll('pre > code.language-python').forEach(function(code){
       var pre = code.parentElement;
       var p = pre.previousElementSibling, sub = '', secId = null;
@@ -98,10 +103,18 @@
       }
       if(!secId){ return; }
       var isExample = /worked example/i.test(sub);
-      var mode = isExample ? 'cloze' : 'forge';
-      var label = isExample ? '&#127918; Play this example' : '&#127918; Play this template';
-      var bar = document.createElement('div'); bar.className = 'gp-bar gp-bar-sm';
-      bar.appendChild(playLink(secId, mode, label, true));
+      var src = isExample ? 'example' : 'template';
+      var bar = document.createElement('div'); bar.className = 'gp-bar gp-bar-sm forge-bar';
+      var lab = document.createElement('span'); lab.className = 'forge-lab';
+      lab.innerHTML = (isExample ? '&#127918; Forge this example' : '&#127918; Forge this template') + ' &mdash; pick a level:';
+      bar.appendChild(lab);
+      [['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard']].forEach(function(d){
+        var a = document.createElement('a');
+        a.className = 'play-btn play-btn-sm play-diff ' + d[0];
+        a.href = gameHref(secId, 'forge', src, d[0]);
+        a.textContent = d[1];
+        bar.appendChild(a);
+      });
       if(pre.nextSibling){ pre.parentNode.insertBefore(bar, pre.nextSibling); } else { pre.parentNode.appendChild(bar); }
     });
   })();
